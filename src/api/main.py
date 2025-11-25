@@ -4,7 +4,7 @@ import uvicorn
 import datetime
 from typing import Dict, List
 
-from ..data.schemas import TicketInput
+from src.data.schemas import TicketInput, TicketCreateInput
 from .ticket_tempo import TicketAcesso
 
 app = FastAPI()
@@ -26,18 +26,21 @@ clientes_db = [
     {"id": 3, "nome": "Vitor", "tempo": 20},   # 20 minutos
 ]
 
-def calcular_tempo_restante(cliente_id: int) -> int:
+def calcular_tempo_restante(cliente_id: int) -> float:
     """
     Calcula o tempo restante baseado no tempo inicial e tempo decorrido.
     """
-    if api_start_time is None:
-        return clientes_db[cliente_id - 1]["tempo"]
-    
-    tempo_decorrido = (datetime.datetime.now() - api_start_time).total_seconds() / 60  # Converter para minutos
-    tempo_inicial = clientes_tempo_inicial.get(cliente_id, clientes_db[cliente_id - 1]["tempo"])
-    
-    tempo_restante = tempo_inicial - tempo_decorrido
-    return max(0, tempo_restante)  # Não permite tempo negativo
+    try:
+        if api_start_time is None:
+            return clientes_db[cliente_id - 1]["tempo"]
+        
+        tempo_decorrido = (datetime.datetime.now() - api_start_time).total_seconds() / 60
+        tempo_inicial = clientes_tempo_inicial.get(cliente_id, clientes_db[cliente_id - 1]["tempo"])
+        
+        tempo_restante = tempo_inicial - tempo_decorrido
+        return max(0.0, tempo_restante)
+    except (IndexError, KeyError):
+        return 0.0
 
 @app.on_event("startup")
 def startup_event():
@@ -53,7 +56,7 @@ def startup_event():
     
     print(f"API iniciada em: {api_start_time}")
 
-# Endpoints
+
 @app.get("/")
 def home():
     return {"mensagem": "Bem-vindo à API de Validação de Tickets de Tempo de Acesso!"}
@@ -129,7 +132,7 @@ def aplicar_acrescimo(cliente_id: int, ticket: TicketInput):
     novo_tempo_inicial = novo_tempo_restante + tempo_decorrido
     
     clientes_tempo_inicial[cliente_id] = novo_tempo_inicial
-    cliente["tempo"] = novo_tempo_inicial  # Atualiza também no "banco de dados"
+    cliente["tempo"] = novo_tempo_inicial  
     
     return {
         "id": cliente["id"],
@@ -142,7 +145,7 @@ def aplicar_acrescimo(cliente_id: int, ticket: TicketInput):
     }
 
 @app.post("/clientes/{cliente_id}/reset_tempo")
-def resetar_tempo(cliente_id: int, novo_tempo: int):
+def resetar_tempo(cliente_id: int, novo_tempo: int) -> dict:
     """
     Reseta o tempo do cliente (apenas para testes).
     """
@@ -156,6 +159,48 @@ def resetar_tempo(cliente_id: int, novo_tempo: int):
     return {
         "mensagem": f"Tempo do cliente {cliente['nome']} resetado para {novo_tempo} minutos",
         "tempo_restante_atual": calcular_tempo_restante(cliente_id)
+    }
+
+@app.post("/tickets", response_model=dict)
+def criar_novo_ticket(ticket_data: TicketCreateInput):
+    """
+    Cria um novo código de ticket com um valor de tempo customizado.
+    """
+    codigo = ticket_data.codigo
+    valor = ticket_data.valor
+    
+    # 1. Verifica se o ticket já existe
+    if codigo in TicketAcesso.ticket_acesso:
+        raise HTTPException(status_code=400, detail=f"Ticket '{codigo}' já existe.")
+        
+    # 2. Adiciona o novo ticket usando o método da classe
+    TicketAcesso.adicionar_ticket(codigo, valor)
+    
+    return {
+        "mensagem": f"Novo ticket '{codigo}' criado com sucesso.",
+        "valor_minutos": valor,
+        "tickets_disponiveis": TicketAcesso.ticket_acesso
+    }
+
+@app.delete("/tickets/{codigo_ticket}", response_model=dict)
+def deletar_ticket(codigo_ticket: str):
+    """
+    Deleta um ticket de acesso customizado pelo seu código.
+    """
+    
+    # 1. Tenta remover o ticket
+    removido = TicketAcesso.remover_ticket(codigo_ticket)
+    
+    if not removido:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Ticket '{codigo_ticket}' não encontrado."
+        )
+        
+    # 2. Retorna a lista atualizada de tickets
+    return {
+        "mensagem": f"Ticket '{codigo_ticket}' removido com sucesso.",
+        "tickets_disponiveis_atualizados": TicketAcesso.ticket_acesso
     }
 
 if __name__ == "__main__":

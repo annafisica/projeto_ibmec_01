@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # Este arquivo está em: <projeto>/src/config.py
-# BASE_DIR = raiz do projeto (PROJETO_IBMEC_01)
+# BASE_DIR = raiz do projeto (PROJETO_AVALIATIVO_MBA_AGV)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Diretório de código-fonte
@@ -13,10 +13,10 @@ LOGS_DIR = BASE_DIR / "logs"
 TESTS_DIR = BASE_DIR / "tests"
 
 # Subpastas específicas
-DATA_DIR = SRC_DIR / "data"              # onde está o schemas.py
-MODELS_DIR = ARTIFACTS_DIR / "models"    # modelos treinados / artefatos
+DATA_DIR = SRC_DIR / "data"              
+MODELS_DIR = ARTIFACTS_DIR / "models"   
 
 # API
-API_TITLE = "API_VALTEMPO_TICKET"          # corrigi o typo AOU_TITLE
+API_TITLE = "API_VALTEMPO_TICKET"         
 API_VERSION = "1.0.0"
 API_DESCRIPTION = "API para validar tickets de tempo"

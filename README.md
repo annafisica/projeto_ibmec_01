@@ -112,7 +112,7 @@ Tickets válidos podem adicionar minutos ao tempo restante.
 pip install fastapi uvicorn pydantic (ou instale a partir do arquivo requirements.txt)
 
 2. Execute o servidor
-uvicorn main:app
+uvicorn src.api.main:app
 
 3. Acesse a documentação
 http://127.0.0.1:8000/docs
